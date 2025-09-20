@@ -1,18 +1,17 @@
-
-
 <!DOCTYPE html>
 <html lang="bg">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Джигсо пъзел — Димитровград</title>
     <style>
         body { font-family: Arial, sans-serif; text-align: center; background-color: #f0f0f0; }
         #controls { margin: 20px; }
-        #board { border: 2px solid #333; background-color: white; cursor: move; display: block; margin: 20px auto; touch-action: none; }
+        #board { border: 2px solid #333; background-color: white; display: block; margin: 20px auto; touch-action: none; }
         #info { margin: 10px; font-size: 18px; }
         button { padding: 10px 15px; margin: 5px; font-size: 16px; }
         #source { display: none; }
+        canvas.dragging { cursor: grabbing; } /* Визуална обратна връзка при плъзгане */
     </style>
 </head>
 <body>
@@ -43,7 +42,7 @@
         let canvas = document.getElementById('board');
         let ctx = canvas.getContext('2d');
         let img = document.getElementById('source');
-        let size = 3; // default size
+        let size = 3;
         let tileSize;
         let board = [];
         let blankPos = {x: 0, y: 0};
@@ -53,6 +52,8 @@
         let isSolved = false;
         let isLoaded = false;
         let draggedTile = null;
+        let dragOffset = {x: 0, y: 0}; // За визуално плъзгане
+        let lastTouchPos = null; // За последна позиция при тъч
 
         img.onload = function() {
             console.log('Image loaded successfully');
@@ -61,13 +62,13 @@
         };
 
         img.onerror = function() {
-            console.error('Failed to load image. Check the file name and location.');
-            alert('Грешка при зареждане на изображението. Уверете се, че Dimitrovgrad-2018.jpg е в същата папка.');
+            console.error('Failed to load image.');
+            alert('Грешка при зареждане на изображението.');
         };
 
         function init(newSize) {
             if (!isLoaded) {
-                alert('Изображението все още не е заредено. Опитайте отново след секунда.');
+                alert('Изображението все още не е заредено.');
                 return;
             }
             size = newSize;
@@ -75,7 +76,7 @@
             canvas.width = tileSize * size;
             canvas.height = tileSize * size;
             board = Array.from({length: size * size}, (_, i) => i);
-            board[size * size - 1] = -1; // blank tile at end
+            board[size * size - 1] = -1;
             blankPos = {x: size - 1, y: size - 1};
             moves = 0;
             timeElapsed = 0;
@@ -85,7 +86,6 @@
             if (timer) clearInterval(timer);
             timer = setInterval(updateTime, 1000);
             draw();
-            // Remove existing listeners to prevent duplicates
             canvas.removeEventListener('mousedown', startDragging);
             canvas.removeEventListener('mousemove', drag);
             canvas.removeEventListener('mouseup', drop);
@@ -93,7 +93,6 @@
             canvas.removeEventListener('touchstart', startTouch);
             canvas.removeEventListener('touchmove', touchMove);
             canvas.removeEventListener('touchend', touchEnd);
-            // Add mouse and touch event listeners
             canvas.addEventListener('mousedown', startDragging);
             canvas.addEventListener('mousemove', drag);
             canvas.addEventListener('mouseup', drop);
@@ -122,18 +121,30 @@
                 let x = col * tileSize;
                 let y = row * tileSize;
                 let tileNum = board[i];
-                if (tileNum !== -1) {
+                if (tileNum !== -1 && i !== draggedTile) {
                     let srcRow = Math.floor(tileNum / size);
                     let srcCol = tileNum % size;
                     let srcX = srcCol * tileSize;
                     let srcY = srcRow * tileSize;
                     ctx.drawImage(img, srcX, srcY, tileSize, tileSize, x, y, tileSize, tileSize);
-                } else {
+                } else if (tileNum === -1) {
                     ctx.fillStyle = 'white';
                     ctx.fillRect(x, y, tileSize, tileSize);
                     ctx.strokeStyle = '#333';
                     ctx.strokeRect(x, y, tileSize, tileSize);
                 }
+            }
+            // Визуално изчертаване на влачената плочка
+            if (draggedTile !== null && lastTouchPos) {
+                let tileNum = board[draggedTile];
+                let srcRow = Math.floor(tileNum / size);
+                let srcCol = tileNum % size;
+                let srcX = srcCol * tileSize;
+                let srcY = srcRow * tileSize;
+                ctx.globalAlpha = 0.8; // Полупрозрачна плочка при влачене
+                ctx.drawImage(img, srcX, srcY, tileSize, tileSize, 
+                    lastTouchPos.x + dragOffset.x, lastTouchPos.y + dragOffset.y, tileSize, tileSize);
+                ctx.globalAlpha = 1.0;
             }
             ctx.globalAlpha = 0.3;
             ctx.fillStyle = 'black';
@@ -160,30 +171,52 @@
             let index = getTileAt(x, y);
             if (index >= 0 && board[index] !== -1) {
                 draggedTile = index;
-                console.log(`Started dragging tile at index: ${draggedTile}`);
+                dragOffset.x = (index % size) * tileSize - x;
+                dragOffset.y = Math.floor(index / size) * tileSize - y;
+                lastTouchPos = {x: x, y: y};
+                canvas.classList.add('dragging');
+                draw();
             }
         }
 
         function startTouch(event) {
             if (isSolved || !isLoaded) return;
             event.preventDefault();
+            if (event.touches.length > 1) return; // Игнорираме множествени докосвания
             let rect = canvas.getBoundingClientRect();
             let x = event.touches[0].clientX - rect.left;
             let y = event.touches[0].clientY - rect.top;
             let index = getTileAt(x, y);
             if (index >= 0 && board[index] !== -1) {
                 draggedTile = index;
-                console.log(`Started touching tile at index: ${draggedTile}`);
+                dragOffset.x = (index % size) * tileSize - x;
+                dragOffset.y = Math.floor(index / size) * tileSize - y;
+                lastTouchPos = {x: x, y: y};
+                canvas.classList.add('dragging');
+                draw();
             }
         }
 
         function drag(event) {
             if (draggedTile === null) return;
+            let rect = canvas.getBoundingClientRect();
+            lastTouchPos = {
+                x: event.clientX - rect.left,
+                y: event.clientY - rect.top
+            };
+            draw();
         }
 
         function touchMove(event) {
             if (draggedTile === null) return;
             event.preventDefault();
+            if (event.touches.length > 1) return; // Игнорираме множествени докосвания
+            let rect = canvas.getBoundingClientRect();
+            lastTouchPos = {
+                x: event.touches[0].clientX - rect.left,
+                y: event.touches[0].clientY - rect.top
+            };
+            draw();
         }
 
         function drop(event) {
@@ -193,9 +226,6 @@
             let y = event.clientY - rect.top;
             let targetIndex = getTileAt(x, y);
             let blankIndex = blankPos.y * size + blankPos.x;
-
-            console.log(`Dropped at index: ${targetIndex}, blank at: ${blankIndex}`);
-
             if (targetIndex === blankIndex) {
                 [board[draggedTile], board[blankIndex]] = [board[blankIndex], board[draggedTile]];
                 blankPos.x = Math.floor(draggedTile % size);
@@ -206,19 +236,19 @@
                 checkSolved();
             }
             draggedTile = null;
+            lastTouchPos = null;
+            canvas.classList.remove('dragging');
+            draw();
         }
 
         function touchEnd(event) {
             if (draggedTile === null || isSolved || !isLoaded) return;
             event.preventDefault();
             let rect = canvas.getBoundingClientRect();
-            let x = event.changedTouches[0].clientX - rect.left;
-            let y = event.changedTouches[0].clientY - rect.top;
+            let x = lastTouchPos ? lastTouchPos.x : event.changedTouches[0].clientX - rect.left;
+            let y = lastTouchPos ? lastTouchPos.y : event.changedTouches[0].clientY - rect.top;
             let targetIndex = getTileAt(x, y);
             let blankIndex = blankPos.y * size + blankPos.x;
-
-            console.log(`Touch ended at index: ${targetIndex}, blank at: ${blankIndex}`);
-
             if (targetIndex === blankIndex) {
                 [board[draggedTile], board[blankIndex]] = [board[blankIndex], board[draggedTile]];
                 blankPos.x = Math.floor(draggedTile % size);
@@ -229,16 +259,23 @@
                 checkSolved();
             }
             draggedTile = null;
+            lastTouchPos = null;
+            canvas.classList.remove('dragging');
+            draw();
         }
 
         function cancelDrag() {
             draggedTile = null;
+            lastTouchPos = null;
+            canvas.classList.remove('dragging');
+            draw();
         }
 
         function checkSolved() {
             let solved = board.every((value, index) => value === index || (index === board.length - 1 && value === -1));
             if (solved) {
                 isSolved = true;
+                clearInterval(timer);
                 draw();
                 alert('Поздравления! Решихте пъзела!');
             }
@@ -276,6 +313,7 @@
             isSolved = true;
             moves = 0;
             document.getElementById('moves').innerText = moves;
+            clearInterval(timer);
             draw();
         }
 
@@ -293,3 +331,4 @@
     </script>
 </body>
 </html>
+
