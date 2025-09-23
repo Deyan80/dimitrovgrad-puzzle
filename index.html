@@ -7,10 +7,9 @@
     <!-- Open Graph мета тагове за споделяне във Фейсбук -->
     <meta property="og:title" content="Джигсо пъзел — Димитровград">
     <meta property="og:description" content="Решете този забавен джигсо пъзел с изглед от Димитровград! Изберете ниво на трудност и подредете парчетата.">
-    <meta property="og:image" content="https://c.pxhere.com/photos/5a/8d/dimitrovgrad_bulgaria_city_urban_architecture_building-1434269.jpg!d">
-    <meta property="og:image:width" content="640">
-    <meta property="og:image:height" content="426">
-    <meta property="og:image:alt" content="Изглед към Димитровград">
+    <meta property="og:image" content="https://upload.wikimedia.org/wikipedia/commons/6/69/28.09.12_Dimitrovgrad_10045_%288618616711%29.jpg">
+    <meta property="og:image:width" content="4000">
+    <meta property="og:image:height" content="3000">
     <meta property="og:url" content="https://yourusername.github.io/your-repo/">
     <meta property="og:type" content="website">
     <style>
@@ -45,7 +44,7 @@
     
     <p>Влачете цветните парчета върху празното място, за да ги преместите.</p>
     
-    <img id="source" src="https://c.pxhere.com/photos/5a/8d/dimitrovgrad_bulgaria_city_urban_architecture_building-1434269.jpg!d" alt="Снимка на Димитровград" crossorigin="anonymous">
+    <img id="source" src="https://upload.wikimedia.org/wikipedia/commons/6/69/28.09.12_Dimitrovgrad_10045_%288618616711%29.jpg" alt="Снимка на Димитровград">
     
     <script>
         let canvas = document.getElementById('board');
@@ -72,7 +71,7 @@
 
         img.onerror = function() {
             console.error('Failed to load image.');
-            alert('Грешка при зареждане на изображението. Проверете конекцията или URL.');
+            alert('Грешка при зареждане на изображението.');
         };
 
         function init(newSize) {
@@ -340,4 +339,3 @@
     </script>
 </body>
 </html>
-
